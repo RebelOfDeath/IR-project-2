@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run [Worker]" type="docker-deploy" factoryName="docker-image" server-name="Docker">
+    <deployment type="docker-image">
+      <settings>
+        <option name="imageTag" value="jbr/ase-worker:latest" />
+        <option name="containerName" value="ase-worker" />
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>

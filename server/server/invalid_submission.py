@@ -1,0 +1,2 @@
+class InvalidSubmissionError(ValueError):
+    pass
