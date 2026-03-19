@@ -1,0 +1,14 @@
+# BM25 only retrieval (baseline for RQ1)
+# This represents flat retrieval without graph augmentation
+name: bm25_only
+
+graph:
+  max_hop: 0
+  reverse_import_weight: 0.0
+  hop_decay: 0.0
+  direct_import_boost: 0.0
+
+scoring:
+  bm25_weight: 1.0
+  graph_weight: 0.0
+  symbol_weight: 0.0

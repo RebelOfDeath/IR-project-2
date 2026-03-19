@@ -1,0 +1,14 @@
+# Graph only retrieval (ablation for RQ1)
+# Only uses import graph structure, no lexical matching
+name: graph_only
+
+graph:
+  max_hop: 2
+  reverse_import_weight: 0.35
+  hop_decay: 0.65
+  direct_import_boost: 0.05
+
+scoring:
+  bm25_weight: 0.0
+  graph_weight: 1.0
+  symbol_weight: 0.0

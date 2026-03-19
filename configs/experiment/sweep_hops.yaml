@@ -1,0 +1,11 @@
+# @package _global_
+# Sweep over different hop depths for RQ3
+# Tests: What is the effect of expansion depth (0-hop vs 1-hop vs 2-hop vs 3-hop)?
+
+defaults:
+  - override /retrieval: simple_hybrid
+
+hydra:
+  sweeper:
+    params:
+      retrieval.graph.max_hop: 0,1,2,3

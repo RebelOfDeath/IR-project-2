@@ -1,0 +1,14 @@
+# @package _global_
+# Sweep over scoring weights for RQ1
+# Tests: How does graph-augmented retrieval compare to BM25 baseline?
+
+defaults:
+  - override /retrieval: simple_hybrid
+
+hydra:
+  sweeper:
+    params:
+      # Test BM25-dominant to Graph-dominant spectrum
+      # Cartesian product will generate many combinations; filter meaningful ones in analysis
+      retrieval.scoring.bm25_weight: 1.0,0.7,0.55,0.3,0.0
+      retrieval.scoring.graph_weight: 0.0,0.15,0.30,0.55,0.85

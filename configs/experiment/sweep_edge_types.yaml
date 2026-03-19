@@ -1,0 +1,18 @@
+# @package _global_
+# Sweep over import direction weights for RQ2 (adapted)
+# Tests: Do forward imports vs reverse imports contribute differently?
+#
+# Since simple_hybrid only uses imports, we adapt RQ2 to test:
+# - Forward imports: files that the completion file imports (strong signal)
+# - Reverse imports: files that import the completion file (weaker signal)
+
+defaults:
+  - override /retrieval: simple_hybrid
+
+hydra:
+  sweeper:
+    params:
+      # Test forward-only, reverse-only, and combined import directions
+      # reverse_import_weight=0 means only forward imports
+      # reverse_import_weight=1 means equal forward/reverse weighting
+      retrieval.graph.reverse_import_weight: 0.0,0.2,0.35,0.5,0.75,1.0

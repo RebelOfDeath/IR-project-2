@@ -1,0 +1,40 @@
+# Default configuration for SimpleHybridRAG
+# Aligned with research questions RQ1, RQ2 (adapted), RQ3
+defaults:
+  - retrieval: simple_hybrid
+  - _self_
+
+# Data settings
+data:
+  stage: public
+  lang: python
+  data_dir: data
+  predictions_dir: predictions
+
+# Context assembly settings
+context:
+  max_files: 5
+  max_tokens: 8000
+  min_lines: 5
+
+# Prefix/suffix trimming (for baseline comparison)
+trim:
+  prefix: false
+  suffix: false
+  trim_lines: 10
+
+# Evaluation settings
+evaluation:
+  enabled: true
+  server_url: "http://localhost:8000"
+  model: "JetBrains/Mellum-4b-sft-python"  # HuggingFace model for vLLM
+
+# Hydra settings
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  job:
+    chdir: false

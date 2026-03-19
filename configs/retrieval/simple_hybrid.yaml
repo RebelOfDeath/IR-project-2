@@ -1,0 +1,21 @@
+# Simple Hybrid retrieval: BM25 + Import Graph + Symbol Matching
+# This is the main retrieval method for our research
+name: simple_hybrid
+
+# Graph expansion settings
+graph:
+  max_hop: 2  # For RQ3: test 0, 1, 2, 3
+
+  # Import graph settings (for RQ2 adapted: forward vs reverse imports)
+  reverse_import_weight: 0.35  # Weight for files that import the current file
+  hop_decay: 0.65  # Decay factor per hop
+
+  # Direct neighbor boost (files directly imported by completion file)
+  direct_import_boost: 0.05
+
+# Scoring weights (for RQ1: BM25 vs Graph-augmented)
+# bm25 + graph + symbol should roughly sum to 1.0
+scoring:
+  bm25_weight: 0.55
+  graph_weight: 0.30
+  symbol_weight: 0.15

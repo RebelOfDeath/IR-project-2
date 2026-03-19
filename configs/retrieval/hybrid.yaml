@@ -1,0 +1,16 @@
+# Hybrid retrieval: BM25 + Graph (alternative config)
+# Uses same structure as simple_hybrid for consistency
+name: hybrid
+
+# Graph expansion settings
+graph:
+  max_hop: 2
+  reverse_import_weight: 0.35
+  hop_decay: 0.65
+  direct_import_boost: 0.05
+
+# Scoring weights
+scoring:
+  bm25_weight: 0.5
+  graph_weight: 0.4
+  symbol_weight: 0.1
