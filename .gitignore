@@ -1,3 +1,10 @@
 .idea/**/*
 .hf/
 venv/
+__pycache__
+.vllm
+*.jsonl
+*.db
+*.zip
+data/repositories-python-public
+

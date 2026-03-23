@@ -3,6 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export HF_HOME="$SCRIPT_DIR/.hf/cache"
+export VLLM_CACHE_ROOT="$SCRIPT_DIR/.vllm/cache"
 export CUDA_VISIBLE_DEVICES=0
 
 mkdir -p "$HF_HOME"
