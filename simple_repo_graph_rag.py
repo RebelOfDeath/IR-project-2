@@ -16,6 +16,7 @@ import ast
 import keyword
 import os
 import re
+import warnings
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -282,7 +283,9 @@ class SimplePythonRepoIndex:
             imported_aliases: Dict[str, str] = {}
 
             try:
-                tree = ast.parse(content)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", SyntaxWarning)
+                    tree = ast.parse(content)
                 extractor = FileMetadataExtractor()
                 extractor.visit(tree)
                 imports = extractor.imports

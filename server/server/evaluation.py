@@ -41,6 +41,7 @@ def get_vllm_engine(model_name: str = "JetBrains/Mellum-4b-sft-python"):
             max_tokens=8192,
             max_new_tokens=384,
             temperature=0.0,
+            gpu_memory_utilization=0.40,
         )
     return _vllm_engine
 
