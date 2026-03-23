@@ -667,7 +667,7 @@ def run_evaluation(
                 f"{server_url}/evaluate",
                 files=files,
                 data=data,
-                timeout=600,  # 10 minute timeout for large evaluations
+                timeout=1800,  # 30 minute timeout for large evaluations
             )
 
         if response.status_code == 200:
