@@ -10,7 +10,7 @@ from server.config_classes.inference_engine_config import APIEngineConfig
 from server.config_classes.task_config import TaskConfig
 from server.config_classes.tokenization_config import TokenizationConfig
 from server.data_classes import CompletionDataPoint
-from server.inference import OpenAIEngine, CodestralEngine, NebiusEngine, GrazieV2Engine
+from server.inference import VLLMEngine
 
 logger = logging.getLogger(__name__)
 
