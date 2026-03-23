@@ -524,13 +524,15 @@ def find_hybrid_context(
     suffix: str,
     completion_file_path: str,
     config: Optional[SimpleHybridConfig] = None,
+    index: Optional[SimplePythonRepoIndex] = None,
 ) -> Tuple[str, List[dict]]:
     """
     Main entry point similar to your current pipeline.
     """
     cfg = config or SimpleHybridConfig()
-    index = SimplePythonRepoIndex(root_dir, cfg)
-    index.build()
+    if index is None:
+        index = SimplePythonRepoIndex(root_dir, cfg)
+        index.build()
 
     query = prefix + "\n" + suffix
     ranked = index.retrieve(query=query, completion_file=completion_file_path, top_k=25)
@@ -730,6 +732,7 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
     run_id = run.run_id
 
     eval_results = None
+    index_cache: Dict[str, SimplePythonRepoIndex] = {}
 
     try:
         with jsonlines.open(completion_points_file, 'r') as reader:
@@ -744,6 +747,13 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
                         f"{repo_path}-{repo_revision}"
                     )
 
+                    # Get or build cached index for this repo
+                    cache_key = f"{repo_path}-{repo_revision}"
+                    if cache_key not in index_cache:
+                        idx = SimplePythonRepoIndex(root_directory, config)
+                        idx.build()
+                        index_cache[cache_key] = idx
+
                     # Get completion file path
                     completion_file = datapoint['path']
 
@@ -755,7 +765,8 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
                     try:
                         context, score_records = find_hybrid_context(
                             root_directory, prefix, suffix,
-                            completion_file, config
+                            completion_file, config,
+                            index=index_cache[cache_key],
                         )
 
                         # Log retrieval scores to database
