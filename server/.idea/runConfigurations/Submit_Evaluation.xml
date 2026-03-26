@@ -1,5 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Submit Evaluation" type="HttpClient.HttpRequestRunConfigurationType" factoryName="HTTP Request" path="$PROJECT_DIR$/http/ase2025-server-api.http" executionIdentifier="Submit Evaluation" index="2" runType="Run single request">
-    <method v="2" />
-  </configuration>
-</component>

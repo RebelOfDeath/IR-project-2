@@ -6,7 +6,7 @@ defaults:
 
 # Data settings
 data:
-  stage: public
+  stage: practice
   lang: python
   data_dir: data
   predictions_dir: predictions
@@ -23,11 +23,11 @@ trim:
   suffix: false
   trim_lines: 10
 
-# Evaluation settings
+# Evaluation settings (uses Ollama locally)
 evaluation:
   enabled: true
-  server_url: "http://localhost:8000"
-  model: "JetBrains/Mellum-4b-sft-python"  # HuggingFace model for vLLM
+  ollama_url: "http://localhost:11434"
+  model: "JetBrains/Mellum-4b-sft-python"
 
 # Hydra settings
 hydra:

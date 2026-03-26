@@ -631,54 +631,41 @@ def create_run_from_simple_config(
 
 def run_evaluation(
     predictions_file: str,
-    annotations_file: str,
-    server_url: str,
+    data_dir: str,
     stage: str,
     language: str,
+    ollama_url: str = "http://localhost:11434",
+    model: str = "JetBrains/Mellum-4b-sft-python",
 ) -> Optional[dict]:
     """
-    Send predictions to evaluation server and get chrF scores.
+    Evaluate predictions locally using Ollama + chrF.
 
     Args:
         predictions_file: Path to the predictions JSONL file
-        annotations_file: Path to the annotations JSONL file (ground truth)
-        server_url: URL of the evaluation server
+        data_dir: Path to the data directory
         stage: Evaluation stage
         language: Programming language
+        ollama_url: Ollama API URL
+        model: Ollama model name
 
     Returns:
         Dict with evaluation results or None if evaluation fails
     """
-    import requests
+    from evaluate import run_evaluation as _run_eval, MODEL_NAME, OLLAMA_URL
+    import evaluate as eval_module
 
     try:
-        print(f"\nSubmitting predictions to evaluation server: {server_url}")
+        eval_module.MODEL_NAME = model
+        eval_module.OLLAMA_URL = ollama_url
 
-        with open(predictions_file, 'rb') as f:
-            files = {'submission_file': (os.path.basename(predictions_file), f, 'application/json')}
-            data = {'stage': stage, 'language': language}
+        mean_chrf = _run_eval(
+            predictions_path=predictions_file,
+            data_dir=data_dir,
+            stage=stage,
+            lang=language,
+        )
+        return {"mean_chrf": mean_chrf}
 
-            response = requests.post(
-                f"{server_url}/evaluate",
-                files=files,
-                data=data,
-                timeout=600,  # 10 minute timeout for large evaluations
-            )
-
-        if response.status_code == 200:
-            results = response.json()
-            print(f"Evaluation successful!")
-            print(f"  Mean chrF: {results.get('mean_chrf', 'N/A')}")
-            print(f"  Samples evaluated: {results.get('num_samples', 'N/A')}")
-            return results
-        else:
-            print(f"Evaluation failed with status {response.status_code}: {response.text}")
-            return None
-
-    except requests.exceptions.ConnectionError:
-        print(f"Warning: Could not connect to evaluation server at {server_url}")
-        print("  Make sure the server is running: cd server/server && python app.py")
-        return None
     except Exception as e:
         print(f"Warning: Evaluation failed: {e}")
         return None
@@ -716,8 +703,6 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
     predictions_file = os.path.join(predictions_dir, prediction_filename)
 
     # Annotations file for evaluation
-    annotations_file = os.path.join(data_dir, f"{language}-{stage}.jsonl")
-
     # Ensure predictions directory exists
     os.makedirs(predictions_dir, exist_ok=True)
 
@@ -806,13 +791,15 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
 
         # Run evaluation if enabled
         if cfg.get('evaluation', {}).get('enabled', False):
-            server_url = cfg.evaluation.get('server_url', 'http://localhost:8000')
+            ollama_url = cfg.evaluation.get('ollama_url', 'http://localhost:11434')
+            model = cfg.evaluation.get('model', 'mellum')
             eval_results = run_evaluation(
                 predictions_file=predictions_file,
-                annotations_file=annotations_file,
-                server_url=server_url,
+                data_dir=data_dir,
                 stage=stage,
                 language=language,
+                ollama_url=ollama_url,
+                model=model,
             )
 
             # Update run with evaluation results
