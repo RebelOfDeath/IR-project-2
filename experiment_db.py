@@ -44,14 +44,10 @@ class ExperimentRun:
     max_tokens: int
     min_lines: int
 
-    # Graph pool settings
-    fallback_enabled: bool = True
-    min_pool_size: int = 10
-
     # Trim settings
-    trim_prefix: bool = False
-    trim_suffix: bool = False
-    trim_lines: int = 10
+    trim_prefix: bool
+    trim_suffix: bool
+    trim_lines: int
 
     # Output
     prediction_file: str
@@ -59,6 +55,10 @@ class ExperimentRun:
 
     # Full config as JSON for flexibility
     config_json: str
+
+    # Graph pool settings (nullable for old runs)
+    fallback_enabled: Optional[bool] = None
+    min_pool_size: Optional[int] = None
 
     # Metrics (to be filled by evaluation script later)
     chrf_score: Optional[float] = None
