@@ -1,41 +1,37 @@
-"""Print a summary table of all experiment results."""
-import json
-import glob
-import os
-import re
-from datetime import datetime
+"""Print a summary table of all experiment results from the database."""
+import sqlite3
 
-results_dir = "results"
+db = sqlite3.connect("experiments.db")
+db.row_factory = sqlite3.Row
 
-summaries = sorted(glob.glob(os.path.join(results_dir, "*-summary.json")))
-if not summaries:
-    print("No summary files found in results/")
+rows = db.execute("""
+    SELECT stage, max_hop, bm25_weight, graph_weight, max_files,
+           trim_prefix, trim_suffix, chrf_score, num_samples, timestamp
+    FROM experiments
+    ORDER BY timestamp
+""").fetchall()
+
+if not rows:
+    print("No experiments found in experiments.db")
     exit()
 
-print(f"{'Stage':<10} {'Hops':>4} {'BM25':>6} {'Graph':>6} {'Trim':>8} {'chrF':>8} {'Samples':>7} {'Time(s)':>7}  {'Run at'}")
-print("-" * 85)
+print(f"{'Stage':<10} {'Hops':>4} {'BM25':>6} {'Graph':>6} {'Files':>5} {'Trim':>6} {'chrF':>8} {'N':>5}  {'Run at'}")
+print("-" * 75)
 
-for path in summaries:
-    with open(path) as f:
-        data = json.load(f)
-    name = os.path.basename(path).replace("-summary.json", "")
-    mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M")
+for r in rows:
+    trim_p = "P" if r["trim_prefix"] else ""
+    trim_s = "S" if r["trim_suffix"] else ""
+    trim = (trim_p + trim_s) or "-"
+    chrf = f"{r['chrf_score']:.4f}" if r["chrf_score"] is not None else "pending"
 
-    # Parse settings from filename
-    stage = re.search(r"python-(\w+)-", name)
-    hops = re.search(r"hop(\d+)", name)
-    bm25 = re.search(r"bm([\d.]+)", name)
-    graph = re.search(r"gr([\d.]+)", name)
-    trim_p = "short-prefix" in name
-    trim_s = "short-suffix" in name
-    trim = ("P" if trim_p else "") + ("S" if trim_s else "") or "-"
+    print(f"{r['stage']:<10} "
+          f"{r['max_hop']:>4} "
+          f"{r['bm25_weight']:>6.2f} "
+          f"{r['graph_weight']:>6.2f} "
+          f"{r['max_files']:>5} "
+          f"{trim:>6} "
+          f"{chrf:>8} "
+          f"{r['num_samples']:>5}  "
+          f"{r['timestamp'][:16]}")
 
-    print(f"{stage.group(1) if stage else '?':<10} "
-          f"{hops.group(1) if hops else '?':>4} "
-          f"{bm25.group(1) if bm25 else '?':>6} "
-          f"{graph.group(1) if graph else '?':>6} "
-          f"{trim:>8} "
-          f"{data['mean_chrf']:>8.4f} "
-          f"{data['num_samples']:>7} "
-          f"{data.get('elapsed_seconds', 0):>7.1f}"
-          f"  {mtime}")
+db.close()
