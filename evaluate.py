@@ -54,30 +54,24 @@ MAX_NEW_TOKENS = 64
 STOP_TOKENS = ["\n\n", "<|endoftext|>", "<filename>"]
 
 
-def format_fim_prompt(prefix: str, suffix: str, context: str = "") -> str:
-    """Format a FIM prompt in Mellum format."""
+def ollama_generate(prefix: str, suffix: str, context: str = "") -> str:
+    """Call Ollama /api/generate using native FIM support via prompt/suffix fields."""
     if context:
         context = context.replace(DEFAULT_FILE_SEP, FILE_SEPARATOR)
-    return f"{context}{FIM_PREFIX}{prefix}{FIM_SUFFIX}{suffix}{FIM_MIDDLE}"
-
-
-def ollama_generate(prompt: str) -> str:
-    """Call Ollama /api/generate and return the completion text."""
-    resp = requests.post(
-        f"{OLLAMA_URL}/api/generate",
-        json={
-            "model": MODEL_NAME,
-            "prompt": prompt,
-            "raw": True,
-            "stream": False,
-            "options": {
-                "temperature": 0.0,
-                "num_predict": MAX_NEW_TOKENS,
-                "stop": STOP_TOKENS,
-            },
+    payload = {
+        "model": MODEL_NAME,
+        "prompt": prefix,
+        "suffix": suffix,
+        "stream": False,
+        "options": {
+            "temperature": 0.0,
+            "num_predict": MAX_NEW_TOKENS,
+            "stop": STOP_TOKENS,
         },
-        timeout=120,
-    )
+    }
+    if context:
+        payload["system"] = context
+    resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=120)
     resp.raise_for_status()
     text = resp.json().get("response", "")
     # Cut on any special tokens that leaked through
@@ -126,8 +120,7 @@ def load_data(
         ground_truth = ans["middle"]
         sample_id = dp.get("id", "?")
 
-        prompt = format_fim_prompt(prefix, suffix, context)
-        samples.append((prompt, ground_truth, sample_id, context[:80]))
+        samples.append((prefix, suffix, context, ground_truth, sample_id, context[:80]))
 
     return samples
 
@@ -152,8 +145,8 @@ def run_evaluation(
     results = []
     start = time.time()
 
-    for prompt, ground_truth, sample_id, ctx_snippet in tqdm(samples, desc="Evaluating"):
-        generated = ollama_generate(prompt)
+    for prefix, suffix, context, ground_truth, sample_id, _ in tqdm(samples, desc="Evaluating"):
+        generated = ollama_generate(prefix, suffix, context)
         score = compute_chrf(ground_truth, generated)
         scores.append(score)
 
