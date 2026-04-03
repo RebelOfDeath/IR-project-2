@@ -48,6 +48,9 @@ class SimpleHybridConfig:
     reverse_import_weight: float = 0.35
     hop_decay: float = 0.65
 
+    fallback_enabled: bool = True
+    min_pool_size: int = 10
+
     min_lines: int = 5
 
     @classmethod
@@ -62,6 +65,8 @@ class SimpleHybridConfig:
             symbol_weight=cfg.retrieval.scoring.get("symbol_weight", 0.15),
             reverse_import_weight=cfg.retrieval.graph.get("reverse_import_weight", 0.35),
             hop_decay=cfg.retrieval.graph.get("hop_decay", 0.65),
+            fallback_enabled=cfg.retrieval.graph.get("fallback_enabled", True),
+            min_pool_size=cfg.retrieval.graph.get("min_pool_size", 10),
             min_lines=cfg.context.min_lines,
         )
 
@@ -439,26 +444,47 @@ class SimplePythonRepoIndex:
         top_k: int = 20,
     ) -> List[Tuple[str, float, float, float]]:
         """
+        Two-stage retrieval:
+          Stage 1 - graph filters candidate files (all files reachable within max_hops).
+          Stage 2 - BM25 + symbol scores rank the candidates.
+
+        If fallback is enabled and the graph pool is smaller than min_pool_size,
+        all files are included as candidates instead.
+
         Returns:
             [(file_path, final_score, bm25_score, graph_plus_symbol_score), ...]
         """
         if not self._bm25:
             return []
 
+        rel_completion = None
+        if completion_file:
+            rel_completion = normalize_relpath(self.root_dir, completion_file)
+
+        # Stage 1: graph-based candidate selection 
+        graph_scores = self._graph_scores(rel_completion) if rel_completion else {}
+        graph_pool: Set[str] = set(graph_scores.keys())
+
+        use_full_fallback = False
+        if len(graph_pool) < self.config.min_pool_size:
+            if self.config.fallback_enabled:
+                use_full_fallback = True
+            # If fallback is disabled, we keep the (small) graph pool as-is.
+
+        # Stage 2: BM25 + symbol ranking within the pool
         query_tokens = tokenize(query)
         raw_bm25 = self._bm25.get_scores(query_tokens)
         max_bm25 = max(raw_bm25) if len(raw_bm25) and max(raw_bm25) > 0 else 1.0
         bm25_scores = [s / max_bm25 for s in raw_bm25]
 
-        rel_completion = None
-        if completion_file:
-            rel_completion = normalize_relpath(self.root_dir, completion_file)
-
-        graph_scores = self._graph_scores(rel_completion) if rel_completion else {}
         symbol_scores = self._symbol_scores(query)
 
         ranked: List[Tuple[str, float, float, float]] = []
         for idx, rel_path in enumerate(self._bm25_files):
+            # Filter: only graph-reachable files, unless we fell back.
+            if not use_full_fallback and graph_pool and rel_path not in graph_pool:
+                continue
+
             bm25 = bm25_scores[idx]
             graph = graph_scores.get(rel_path, 0.0)
             symbol = symbol_scores.get(rel_path, 0.0)
