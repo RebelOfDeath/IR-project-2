@@ -647,6 +647,8 @@ def create_run_from_simple_config(
         max_files=cfg.context.max_files,
         max_tokens=cfg.context.max_tokens,
         min_lines=cfg.context.min_lines,
+        fallback_enabled=cfg.retrieval.graph.get("fallback_enabled", True),
+        min_pool_size=cfg.retrieval.graph.get("min_pool_size", 10),
         trim_prefix=cfg.trim.prefix,
         trim_suffix=cfg.trim.suffix,
         trim_lines=cfg.trim.trim_lines,

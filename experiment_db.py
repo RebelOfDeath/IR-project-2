@@ -44,10 +44,14 @@ class ExperimentRun:
     max_tokens: int
     min_lines: int
 
+    # Graph pool settings
+    fallback_enabled: bool = True
+    min_pool_size: int = 10
+
     # Trim settings
-    trim_prefix: bool
-    trim_suffix: bool
-    trim_lines: int
+    trim_prefix: bool = False
+    trim_suffix: bool = False
+    trim_lines: int = 10
 
     # Output
     prediction_file: str
@@ -138,6 +142,10 @@ class ExperimentDB:
                 max_tokens INTEGER NOT NULL,
                 min_lines INTEGER NOT NULL,
 
+                -- Graph pool settings
+                fallback_enabled BOOLEAN,
+                min_pool_size INTEGER,
+
                 -- Trim settings
                 trim_prefix BOOLEAN NOT NULL,
                 trim_suffix BOOLEAN NOT NULL,
@@ -214,6 +222,13 @@ class ExperimentDB:
             ON retrieval_scores(run_id, sample_id)
         """)
 
+        # Migrate: add new columns if missing
+        cursor.execute("PRAGMA table_info(experiments)")
+        existing = {row[1] for row in cursor.fetchall()}
+        for col, typ in [("fallback_enabled", "BOOLEAN"), ("min_pool_size", "INTEGER")]:
+            if col not in existing:
+                cursor.execute(f"ALTER TABLE experiments ADD COLUMN {col} {typ}")
+
         conn.commit()
         conn.close()
 
@@ -229,16 +244,18 @@ class ExperimentDB:
                     retrieval_name, max_hop, bm25_weight, graph_weight,
                     import_weight, call_weight, inheritance_weight, type_ref_weight,
                     max_files, max_tokens, min_lines,
+                    fallback_enabled, min_pool_size,
                     trim_prefix, trim_suffix, trim_lines,
                     prediction_file, num_samples, config_json,
                     chrf_score, bleu_score, exact_match,
                     status, error_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 run.run_id, run.timestamp, run.stage, run.lang,
                 run.retrieval_name, run.max_hop, run.bm25_weight, run.graph_weight,
                 run.import_weight, run.call_weight, run.inheritance_weight, run.type_ref_weight,
                 run.max_files, run.max_tokens, run.min_lines,
+                run.fallback_enabled, run.min_pool_size,
                 run.trim_prefix, run.trim_suffix, run.trim_lines,
                 run.prediction_file, run.num_samples, run.config_json,
                 run.chrf_score, run.bleu_score, run.exact_match,
