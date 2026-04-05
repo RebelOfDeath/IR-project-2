@@ -52,6 +52,7 @@ class SimpleHybridConfig:
     min_pool_size: int = 10
 
     min_lines: int = 5
+    query_window: int = 150
 
     @classmethod
     def from_hydra_config(cls, cfg: DictConfig) -> "SimpleHybridConfig":
@@ -68,6 +69,7 @@ class SimpleHybridConfig:
             fallback_enabled=cfg.retrieval.graph.get("fallback_enabled", True),
             min_pool_size=cfg.retrieval.graph.get("min_pool_size", 10),
             min_lines=cfg.context.min_lines,
+            query_window=cfg.context.get("query_window", 150),
         )
 
 
@@ -561,7 +563,8 @@ def find_hybrid_context(
     index = SimplePythonRepoIndex(root_dir, cfg)
     index.build()
 
-    query = prefix + "\n" + suffix
+    w = cfg.query_window
+    query = prefix[-w:] + "\n" + suffix[:w]
     ranked = index.retrieve(query=query, completion_file=completion_file_path, top_k=25)
     context = index.assemble_context(ranked, completion_file=completion_file_path)
 

@@ -16,6 +16,7 @@ context:
   max_files: 5
   max_tokens: 8000
   min_lines: 5
+  query_window: 150
 
 # Prefix/suffix trimming (for baseline comparison)
 trim:
