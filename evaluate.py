@@ -58,9 +58,11 @@ def ollama_generate(prefix: str, suffix: str, context: str = "") -> str:
     """Call Ollama /api/generate using native FIM support via prompt/suffix fields."""
     if context:
         context = context.replace(DEFAULT_FILE_SEP, FILE_SEPARATOR)
+    # Context goes inside the prefix so it's within the <fim_prefix> block
+    full_prefix = context + prefix if context else prefix
     payload = {
         "model": MODEL_NAME,
-        "prompt": prefix,
+        "prompt": full_prefix,
         "suffix": suffix,
         "stream": False,
         "options": {
@@ -69,8 +71,6 @@ def ollama_generate(prefix: str, suffix: str, context: str = "") -> str:
             "stop": STOP_TOKENS,
         },
     }
-    if context:
-        payload["system"] = context
     resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=120)
     resp.raise_for_status()
     text = resp.json().get("response", "")
