@@ -14,7 +14,7 @@ N_TRIALS = 300
 def objective(trial: optuna.Trial) -> float:
     # Context size
     max_files = trial.suggest_int("max_files", 1, 15)
-    max_tokens = trial.suggest_int("max_tokens", 400, 6000, step=200)
+    max_tokens = trial.suggest_int("max_tokens", 400, 6000, step=100)
     query_window = trial.suggest_int("query_window", 50, 800, step=50)
 
     # Scoring weights (symbol = remainder, so they sum to 1)
