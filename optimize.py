@@ -12,7 +12,7 @@ N_TRIALS = 300
 
 
 def objective(trial: optuna.Trial) -> float:
-    # Context size (wider bounds for overnight exploration)
+    # Context size
     max_files = trial.suggest_int("max_files", 1, 15)
     max_tokens = trial.suggest_int("max_tokens", 500, 6000, step=250)
     query_window = trial.suggest_int("query_window", 50, 800, step=50)
@@ -68,6 +68,12 @@ if __name__ == "__main__":
         storage="sqlite:///optuna.db",
         load_if_exists=True,
     )
+    # Seed with known good config (0.59 on practice)
+    study.enqueue_trial({
+        "max_files": 7, "max_tokens": 1500, "query_window": 150,
+        "bm25_weight": 0.6, "graph_weight": 0.4,
+        "max_hop": 2, "hop_decay": 0.6, "reverse_import_weight": 0.0,
+    })
     study.optimize(objective, n_trials=N_TRIALS)
 
     print("\n" + "=" * 60)
