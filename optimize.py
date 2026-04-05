@@ -6,29 +6,26 @@ import sys
 import sqlite3
 import time
 
-STAGE = "practice"
+STAGE = "public"
 LANG = "python"
-N_TRIALS = 50
+N_TRIALS = 300
 
 
 def objective(trial: optuna.Trial) -> float:
-    # Context size (most impactful based on experiments)
-    max_files = trial.suggest_int("max_files", 0, 3)
-    max_tokens = trial.suggest_int("max_tokens", 100, 1500, step=100)
-    query_window = trial.suggest_int("query_window", 50, 300, step=50)
+    # Context size (wider bounds for overnight exploration)
+    max_files = trial.suggest_int("max_files", 1, 15)
+    max_tokens = trial.suggest_int("max_tokens", 500, 6000, step=250)
+    query_window = trial.suggest_int("query_window", 50, 800, step=50)
 
-    # Graph settings
-    max_hop = trial.suggest_int("max_hop", 1, 3)
-    graph_weight = trial.suggest_float("graph_weight", 0.0, 0.5, step=0.1)
-    bm25_weight = trial.suggest_float("bm25_weight", 0.4, 0.9, step=0.05)
-    symbol_weight = round(1.0 - bm25_weight - graph_weight, 2)
+    # Scoring weights (symbol = remainder, so they sum to 1)
+    bm25_weight = trial.suggest_float("bm25_weight", 0.2, 0.9, step=0.05)
+    graph_weight = trial.suggest_float("graph_weight", 0.0, 0.6, step=0.05)
+    symbol_weight = round(max(1.0 - bm25_weight - graph_weight, 0.0), 2)
 
-    if symbol_weight < 0:
-        return 0.0  # invalid combo
-
-    # Trimming (frees up context window for retrieved files)
-    trim_prefix = trial.suggest_categorical("trim_prefix", [True, False])
-    trim_suffix = trial.suggest_categorical("trim_suffix", [True, False])
+    # Graph traversal
+    max_hop = trial.suggest_int("max_hop", 0, 5)
+    hop_decay = trial.suggest_float("hop_decay", 0.2, 0.9, step=0.1)
+    reverse_import_weight = trial.suggest_float("reverse_import_weight", 0.0, 0.6, step=0.1)
 
     cmd = [
         sys.executable, "simple_repo_graph_rag.py",
@@ -38,11 +35,11 @@ def objective(trial: optuna.Trial) -> float:
         f"context.max_tokens={max_tokens}",
         f"context.query_window={query_window}",
         f"retrieval.graph.max_hop={max_hop}",
+        f"retrieval.graph.hop_decay={hop_decay}",
+        f"retrieval.graph.reverse_import_weight={reverse_import_weight}",
         f"retrieval.scoring.graph_weight={graph_weight}",
         f"retrieval.scoring.bm25_weight={bm25_weight}",
         f"retrieval.scoring.symbol_weight={symbol_weight}",
-        f"trim.prefix={str(trim_prefix).lower()}",
-        f"trim.suffix={str(trim_suffix).lower()}",
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
@@ -52,7 +49,6 @@ def objective(trial: optuna.Trial) -> float:
         return 0.0
 
     # Grab the most recent chrF from the experiments DB
-    
     time.sleep(0.5)
     conn = sqlite3.connect("experiments.db")
     row = conn.execute(
@@ -61,15 +57,14 @@ def objective(trial: optuna.Trial) -> float:
     conn.close()
 
     score = row[0] if row and row[0] is not None else 0.0
-    trim_str = ("P" if trim_prefix else "") + ("S" if trim_suffix else "") or "-"
-    print(f"Trial {trial.number}: chrF={score:.4f} | f={max_files} t={max_tokens} qw={query_window} hop={max_hop} trim={trim_str}")
+    print(f"Trial {trial.number}: chrF={score:.4f} | f={max_files} t={max_tokens} qw={query_window} hop={max_hop} decay={hop_decay} rev={reverse_import_weight} bm25={bm25_weight} gr={graph_weight} sym={symbol_weight}")
     return score
 
 
 if __name__ == "__main__":
     study = optuna.create_study(
         direction="maximize",
-        study_name="simple_hybrid_rag",
+        study_name="simple_hybrid_rag_public",
         storage="sqlite:///optuna.db",
         load_if_exists=True,
     )
