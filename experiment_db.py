@@ -59,6 +59,7 @@ class ExperimentRun:
     # Graph pool settings (nullable for old runs)
     fallback_enabled: Optional[bool] = None
     min_pool_size: Optional[int] = None
+    query_window: Optional[int] = None
 
     # Metrics (to be filled by evaluation script later)
     chrf_score: Optional[float] = None
@@ -145,6 +146,7 @@ class ExperimentDB:
                 -- Graph pool settings
                 fallback_enabled BOOLEAN,
                 min_pool_size INTEGER,
+                query_window INTEGER,
 
                 -- Trim settings
                 trim_prefix BOOLEAN NOT NULL,
@@ -225,7 +227,7 @@ class ExperimentDB:
         # Migrate: add new columns if missing
         cursor.execute("PRAGMA table_info(experiments)")
         existing = {row[1] for row in cursor.fetchall()}
-        for col, typ in [("fallback_enabled", "BOOLEAN"), ("min_pool_size", "INTEGER")]:
+        for col, typ in [("fallback_enabled", "BOOLEAN"), ("min_pool_size", "INTEGER"), ("query_window", "INTEGER")]:
             if col not in existing:
                 cursor.execute(f"ALTER TABLE experiments ADD COLUMN {col} {typ}")
 
@@ -244,18 +246,18 @@ class ExperimentDB:
                     retrieval_name, max_hop, bm25_weight, graph_weight,
                     import_weight, call_weight, inheritance_weight, type_ref_weight,
                     max_files, max_tokens, min_lines,
-                    fallback_enabled, min_pool_size,
+                    fallback_enabled, min_pool_size, query_window,
                     trim_prefix, trim_suffix, trim_lines,
                     prediction_file, num_samples, config_json,
                     chrf_score, bleu_score, exact_match,
                     status, error_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 run.run_id, run.timestamp, run.stage, run.lang,
                 run.retrieval_name, run.max_hop, run.bm25_weight, run.graph_weight,
                 run.import_weight, run.call_weight, run.inheritance_weight, run.type_ref_weight,
                 run.max_files, run.max_tokens, run.min_lines,
-                run.fallback_enabled, run.min_pool_size,
+                run.fallback_enabled, run.min_pool_size, run.query_window,
                 run.trim_prefix, run.trim_suffix, run.trim_lines,
                 run.prediction_file, run.num_samples, run.config_json,
                 run.chrf_score, run.bleu_score, run.exact_match,
@@ -272,6 +274,7 @@ class ExperimentDB:
                     retrieval_name = ?, max_hop = ?, bm25_weight = ?, graph_weight = ?,
                     import_weight = ?, call_weight = ?, inheritance_weight = ?, type_ref_weight = ?,
                     max_files = ?, max_tokens = ?, min_lines = ?,
+                    fallback_enabled = ?, min_pool_size = ?, query_window = ?,
                     trim_prefix = ?, trim_suffix = ?, trim_lines = ?,
                     prediction_file = ?, num_samples = ?, config_json = ?,
                     status = ?, error_message = ?
@@ -281,6 +284,7 @@ class ExperimentDB:
                 run.retrieval_name, run.max_hop, run.bm25_weight, run.graph_weight,
                 run.import_weight, run.call_weight, run.inheritance_weight, run.type_ref_weight,
                 run.max_files, run.max_tokens, run.min_lines,
+                run.fallback_enabled, run.min_pool_size, run.query_window,
                 run.trim_prefix, run.trim_suffix, run.trim_lines,
                 run.prediction_file, run.num_samples, run.config_json,
                 run.status, run.error_message,
