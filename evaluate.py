@@ -109,7 +109,7 @@ def ollama_generate(prompt: str) -> str:
                 "num_keep": -1,  # Enable left truncation by keeping only the most recent tokens
             },
         },
-        timeout=120,
+        timeout=300,
     )
     resp.raise_for_status()
     resp_json = resp.json()
