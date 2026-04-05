@@ -50,30 +50,77 @@ FILE_SEPARATOR = "<filename>"
 DEFAULT_FILE_SEP = "<|file_sep|>"
 
 # Generation parameters (match server defaults)
-MAX_NEW_TOKENS = 64
-STOP_TOKENS = ["\n\n", "<|endoftext|>", "<filename>"]
+MAX_NEW_TOKENS = 128
+MODEL_CONTEXT_WINDOW = 8192
+MAX_PROMPT_TOKENS = MODEL_CONTEXT_WINDOW - MAX_NEW_TOKENS - 50  # Buffer for safety
+STOP_TOKENS = [
+    "<filename>",
+    "<fim_suffix>",
+    "<|endoftext|>",
+    "<fim_middle>",
+    "<fim_prefix>",
+]
 
 
-def ollama_generate(prefix: str, suffix: str, context: str = "") -> str:
-    """Call Ollama /api/generate using native FIM support via prompt/suffix fields."""
+def format_fim_prompt(prefix: str, suffix: str, context: str = "") -> str:
+    """Format a FIM prompt in Mellum format, truncating context if needed."""
     if context:
         context = context.replace(DEFAULT_FILE_SEP, FILE_SEPARATOR)
-    # Context goes inside the prefix so it's within the <fim_prefix> block
-    full_prefix = context + prefix if context else prefix
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": full_prefix,
-        "suffix": suffix,
-        "stream": False,
-        "options": {
-            "temperature": 0.0,
-            "num_predict": MAX_NEW_TOKENS,
-            "stop": STOP_TOKENS,
+
+    # Build FIM parts that must be preserved
+    # Mellum expects S-P-M order: <fim_suffix>suffix<fim_prefix>prefix<fim_middle>
+    fim_part = f"{FIM_SUFFIX}{suffix}{FIM_PREFIX}{prefix}{FIM_MIDDLE}"
+
+    # Estimate tokens: Mellum uses ~2.2 chars per token for code (measured empirically)
+    # Use conservative estimate to avoid truncation of FIM tokens
+    CHARS_PER_TOKEN = 2.2
+    fim_tokens = len(fim_part) / CHARS_PER_TOKEN
+    context_tokens = len(context) / CHARS_PER_TOKEN
+    total_tokens = fim_tokens + context_tokens
+
+    # If we're over budget, truncate context from the start
+    if total_tokens > MAX_PROMPT_TOKENS:
+        # Calculate how much context we can keep (in characters)
+        available_context_tokens = MAX_PROMPT_TOKENS - fim_tokens
+        if available_context_tokens > 0:
+            max_context_chars = int(available_context_tokens * CHARS_PER_TOKEN)
+            # Take from the END of context (most recent code is most relevant)
+            context = context[-max_context_chars:]
+        else:
+            context = ""
+
+    return f"{context}{fim_part}"
+
+
+def ollama_generate(prompt: str) -> str:
+    """Call Ollama /api/generate and return the completion text."""
+    resp = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={
+            "model": MODEL_NAME,
+            "prompt": prompt,
+            "raw": True,
+            "stream": False,
+            "options": {
+                "temperature": 0.0,
+                "num_predict": MAX_NEW_TOKENS,
+                "num_ctx": MODEL_CONTEXT_WINDOW,  # Set context window explicitly
+                "stop": STOP_TOKENS,
+                "num_keep": -1,  # Enable left truncation by keeping only the most recent tokens
+            },
         },
-    }
-    resp = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=120)
+        timeout=120,
+    )
     resp.raise_for_status()
-    text = resp.json().get("response", "")
+    resp_json = resp.json()
+    text = resp_json.get("response", "")
+
+    # Log if response is empty for debugging
+    if not text:
+        prompt_len = resp_json.get("prompt_eval_count", 0)
+        eval_count = resp_json.get("eval_count", 0)
+        print(f"\nWarning: Empty response. Prompt tokens: {prompt_len}, Generated tokens: {eval_count}", file=sys.stderr)
+
     # Cut on any special tokens that leaked through
     for tok in [FIM_PREFIX, FIM_SUFFIX, FIM_MIDDLE, FILE_SEPARATOR, "<|endoftext|>"]:
         if tok in text:
@@ -120,7 +167,8 @@ def load_data(
         ground_truth = ans["middle"]
         sample_id = dp.get("id", "?")
 
-        samples.append((prefix, suffix, context, ground_truth, sample_id, context[:80]))
+        prompt = format_fim_prompt(prefix, suffix, context)
+        samples.append((prompt, ground_truth, sample_id, context[:80]))
 
     return samples
 
@@ -145,8 +193,8 @@ def run_evaluation(
     results = []
     start = time.time()
 
-    for prefix, suffix, context, ground_truth, sample_id, _ in tqdm(samples, desc="Evaluating"):
-        generated = ollama_generate(prefix, suffix, context)
+    for prompt, ground_truth, sample_id, ctx_snippet in tqdm(samples, desc="Evaluating"):
+        generated = ollama_generate(prompt)
         score = compute_chrf(ground_truth, generated)
         scores.append(score)
 

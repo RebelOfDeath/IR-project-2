@@ -463,17 +463,8 @@ class SimplePythonRepoIndex:
         if completion_file:
             rel_completion = normalize_relpath(self.root_dir, completion_file)
 
-        # Stage 1: graph-based candidate selection 
         graph_scores = self._graph_scores(rel_completion) if rel_completion else {}
-        graph_pool: Set[str] = set(graph_scores.keys())
 
-        use_full_fallback = False
-        if len(graph_pool) < self.config.min_pool_size:
-            if self.config.fallback_enabled:
-                use_full_fallback = True
-            # If fallback is disabled, we keep the (small) graph pool as-is.
-
-        # Stage 2: BM25 + symbol ranking within the pool
         query_tokens = tokenize(query)
         raw_bm25 = self._bm25.get_scores(query_tokens)
         max_bm25 = max(raw_bm25) if len(raw_bm25) and max(raw_bm25) > 0 else 1.0
@@ -483,10 +474,6 @@ class SimplePythonRepoIndex:
 
         ranked: List[Tuple[str, float, float, float]] = []
         for idx, rel_path in enumerate(self._bm25_files):
-            # Filter: only graph-reachable files, unless we fell back.
-            if not use_full_fallback and graph_pool and rel_path not in graph_pool:
-                continue
-
             bm25 = bm25_scores[idx]
             graph = graph_scores.get(rel_path, 0.0)
             symbol = symbol_scores.get(rel_path, 0.0)
@@ -564,7 +551,8 @@ def find_hybrid_context(
     index.build()
 
     w = cfg.query_window
-    query = prefix[-w:] + "\n" + suffix[:w]
+    # query = prefix[-w:] + "\n" + suffix[:w]
+    query = prefix + "\n" + suffix
     ranked = index.retrieve(query=query, completion_file=completion_file_path, top_k=25)
     context = index.assemble_context(ranked, completion_file=completion_file_path)
 
