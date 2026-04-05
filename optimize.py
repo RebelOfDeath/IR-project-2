@@ -42,7 +42,7 @@ def objective(trial: optuna.Trial) -> float:
         f"retrieval.scoring.symbol_weight={symbol_weight}",
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30 * 60)
 
     if result.returncode != 0:
         print(f"Trial {trial.number} failed:\n{result.stderr[-500:]}")
