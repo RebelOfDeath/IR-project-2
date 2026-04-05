@@ -9,7 +9,7 @@ rows = db.execute("""
            fallback_enabled, min_pool_size, query_window,
            trim_prefix, trim_suffix, trim_lines, max_tokens, chrf_score, num_samples, timestamp
     FROM experiments
-    ORDER BY timestamp
+    ORDER BY timestamp DESC
 """).fetchall()
 
 if not rows:
