@@ -16,6 +16,7 @@ context:
   max_files: 5
   max_tokens: 8000
   min_lines: 5
+  query_window: 150
 
 # Prefix/suffix trimming (for baseline comparison)
 trim:
@@ -28,6 +29,7 @@ evaluation:
   enabled: true
   ollama_url: "http://localhost:11434"
   model: "JetBrains/Mellum-4b-sft-python"
+  temperature: 0.0
 
 # Hydra settings
 hydra:

@@ -16,6 +16,7 @@ import ast
 import keyword
 import os
 import re
+import warnings
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,7 +48,11 @@ class SimpleHybridConfig:
     reverse_import_weight: float = 0.35
     hop_decay: float = 0.65
 
+    fallback_enabled: bool = True
+    min_pool_size: int = 10
+
     min_lines: int = 5
+    query_window: int = 150
 
     @classmethod
     def from_hydra_config(cls, cfg: DictConfig) -> "SimpleHybridConfig":
@@ -61,7 +66,10 @@ class SimpleHybridConfig:
             symbol_weight=cfg.retrieval.scoring.get("symbol_weight", 0.15),
             reverse_import_weight=cfg.retrieval.graph.get("reverse_import_weight", 0.35),
             hop_decay=cfg.retrieval.graph.get("hop_decay", 0.65),
+            fallback_enabled=cfg.retrieval.graph.get("fallback_enabled", True),
+            min_pool_size=cfg.retrieval.graph.get("min_pool_size", 10),
             min_lines=cfg.context.min_lines,
+            query_window=cfg.context.get("query_window", 150),
         )
 
 
@@ -282,7 +290,9 @@ class SimplePythonRepoIndex:
             imported_aliases: Dict[str, str] = {}
 
             try:
-                tree = ast.parse(content)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", SyntaxWarning)
+                    tree = ast.parse(content)
                 extractor = FileMetadataExtractor()
                 extractor.visit(tree)
                 imports = extractor.imports
@@ -436,22 +446,30 @@ class SimplePythonRepoIndex:
         top_k: int = 20,
     ) -> List[Tuple[str, float, float, float]]:
         """
+        Two-stage retrieval:
+          Stage 1 - graph filters candidate files (all files reachable within max_hops).
+          Stage 2 - BM25 + symbol scores rank the candidates.
+
+        If fallback is enabled and the graph pool is smaller than min_pool_size,
+        all files are included as candidates instead.
+
         Returns:
             [(file_path, final_score, bm25_score, graph_plus_symbol_score), ...]
         """
         if not self._bm25:
             return []
 
-        query_tokens = tokenize(query)
-        raw_bm25 = self._bm25.get_scores(query_tokens)
-        max_bm25 = max(raw_bm25) if len(raw_bm25) and max(raw_bm25) > 0 else 1.0
-        bm25_scores = [s / max_bm25 for s in raw_bm25]
-
         rel_completion = None
         if completion_file:
             rel_completion = normalize_relpath(self.root_dir, completion_file)
 
         graph_scores = self._graph_scores(rel_completion) if rel_completion else {}
+
+        query_tokens = tokenize(query)
+        raw_bm25 = self._bm25.get_scores(query_tokens)
+        max_bm25 = max(raw_bm25) if len(raw_bm25) and max(raw_bm25) > 0 else 1.0
+        bm25_scores = [s / max_bm25 for s in raw_bm25]
+
         symbol_scores = self._symbol_scores(query)
 
         ranked: List[Tuple[str, float, float, float]] = []
@@ -532,6 +550,8 @@ def find_hybrid_context(
     index = SimplePythonRepoIndex(root_dir, cfg)
     index.build()
 
+    w = cfg.query_window
+    # query = prefix[-w:] + "\n" + suffix[:w]
     query = prefix + "\n" + suffix
     ranked = index.retrieve(query=query, completion_file=completion_file_path, top_k=25)
     context = index.assemble_context(ranked, completion_file=completion_file_path)
@@ -618,6 +638,12 @@ def create_run_from_simple_config(
         max_files=cfg.context.max_files,
         max_tokens=cfg.context.max_tokens,
         min_lines=cfg.context.min_lines,
+        fallback_enabled=cfg.retrieval.graph.get("fallback_enabled", True),
+        min_pool_size=cfg.retrieval.graph.get("min_pool_size", 10),
+        query_window=cfg.context.get("query_window", 150),
+        hop_decay=cfg.retrieval.graph.get("hop_decay", 0.65),
+        reverse_import_weight=cfg.retrieval.graph.get("reverse_import_weight", 0.35),
+        symbol_weight=cfg.retrieval.scoring.get("symbol_weight", 0.15),
         trim_prefix=cfg.trim.prefix,
         trim_suffix=cfg.trim.suffix,
         trim_lines=cfg.trim.trim_lines,
@@ -636,6 +662,7 @@ def run_evaluation(
     language: str,
     ollama_url: str = "http://localhost:11434",
     model: str = "JetBrains/Mellum-4b-sft-python",
+    temperature: float = 0.0,
 ) -> Optional[dict]:
     """
     Evaluate predictions locally using Ollama + chrF.
@@ -647,6 +674,7 @@ def run_evaluation(
         language: Programming language
         ollama_url: Ollama API URL
         model: Ollama model name
+        temperature: Sampling temperature for generation
 
     Returns:
         Dict with evaluation results or None if evaluation fails
@@ -657,6 +685,7 @@ def run_evaluation(
     try:
         eval_module.MODEL_NAME = model
         eval_module.OLLAMA_URL = ollama_url
+        eval_module.TEMPERATURE = temperature
 
         mean_chrf = _run_eval(
             predictions_path=predictions_file,
@@ -793,6 +822,7 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
         if cfg.get('evaluation', {}).get('enabled', False):
             ollama_url = cfg.evaluation.get('ollama_url', 'http://localhost:11434')
             model = cfg.evaluation.get('model', 'mellum')
+            temperature = cfg.evaluation.get('temperature', 0.0)
             eval_results = run_evaluation(
                 predictions_file=predictions_file,
                 data_dir=data_dir,
@@ -800,6 +830,7 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
                 language=language,
                 ollama_url=ollama_url,
                 model=model,
+                temperature=temperature,
             )
 
             # Update run with evaluation results

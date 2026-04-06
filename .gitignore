@@ -1,1 +1,7 @@
 .idea/**/*
+data
+.vllm
+.hf/
+__pycache__/
+*.db
+predictions/

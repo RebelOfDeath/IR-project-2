@@ -13,6 +13,11 @@ graph:
   # Direct neighbor boost (files directly imported by completion file)
   direct_import_boost: 0.05
 
+  # Two-stage retrieval: graph filters candidates, then BM25/symbol ranks them.
+  # Fallback expands to all files when graph pool is smaller than min_pool_size.
+  fallback_enabled: false
+  min_pool_size: 10
+
 # Scoring weights (for RQ1: BM25 vs Graph-augmented)
 # bm25 + graph + symbol should roughly sum to 1.0
 scoring:
