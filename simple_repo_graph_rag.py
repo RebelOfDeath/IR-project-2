@@ -662,6 +662,7 @@ def run_evaluation(
     language: str,
     ollama_url: str = "http://localhost:11434",
     model: str = "JetBrains/Mellum-4b-sft-python",
+    temperature: float = 0.0,
 ) -> Optional[dict]:
     """
     Evaluate predictions locally using Ollama + chrF.
@@ -673,6 +674,7 @@ def run_evaluation(
         language: Programming language
         ollama_url: Ollama API URL
         model: Ollama model name
+        temperature: Sampling temperature for generation
 
     Returns:
         Dict with evaluation results or None if evaluation fails
@@ -683,6 +685,7 @@ def run_evaluation(
     try:
         eval_module.MODEL_NAME = model
         eval_module.OLLAMA_URL = ollama_url
+        eval_module.TEMPERATURE = temperature
 
         mean_chrf = _run_eval(
             predictions_path=predictions_file,
@@ -819,6 +822,7 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
         if cfg.get('evaluation', {}).get('enabled', False):
             ollama_url = cfg.evaluation.get('ollama_url', 'http://localhost:11434')
             model = cfg.evaluation.get('model', 'mellum')
+            temperature = cfg.evaluation.get('temperature', 0.0)
             eval_results = run_evaluation(
                 predictions_file=predictions_file,
                 data_dir=data_dir,
@@ -826,6 +830,7 @@ def run_with_config(cfg: DictConfig, original_cwd: str) -> Optional[dict]:
                 language=language,
                 ollama_url=ollama_url,
                 model=model,
+                temperature=temperature,
             )
 
             # Update run with evaluation results

@@ -50,6 +50,7 @@ FILE_SEPARATOR = "<filename>"
 DEFAULT_FILE_SEP = "<|file_sep|>"
 
 # Generation parameters (match server defaults)
+TEMPERATURE = 0.0
 MAX_NEW_TOKENS = 128
 MODEL_CONTEXT_WINDOW = 8192
 MAX_PROMPT_TOKENS = MODEL_CONTEXT_WINDOW - MAX_NEW_TOKENS - 50  # Buffer for safety
@@ -102,7 +103,7 @@ def ollama_generate(prompt: str) -> str:
             "raw": True,
             "stream": False,
             "options": {
-                "temperature": 0.0,
+                "temperature": TEMPERATURE,
                 "num_predict": MAX_NEW_TOKENS,
                 "num_ctx": MODEL_CONTEXT_WINDOW,  # Set context window explicitly
                 "stop": STOP_TOKENS,
