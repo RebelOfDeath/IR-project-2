@@ -18,8 +18,8 @@ if not rows:
     print("No experiments found in experiments.db")
     exit()
 
-print(f"{'Stage':<8} {'Hop':>3} {'BM25':>5} {'Grph':>5} {'Sym':>5} {'Decay':>5} {'Rev':>5} {'Files':>5} {'MaxT':>5} {'QW':>4} {'Trim':>4} {'chrF':>8} {'N':>5}  {'Run at'}")
-print("-" * 100)
+print(f"{'Stage':<8} {'Hop':>3} {'BM25':>5} {'Grph':>5} {'Sym':>5} {'Decay':>5} {'Rev':>5} {'Files':>5} {'MaxT':>5} {'Trim':>4} {'chrF':>8} {'N':>5}  {'Run at'}")
+print("-" * 94)
 
 for r in rows:
     trim_p = "P" if r["trim_prefix"] else ""
