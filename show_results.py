@@ -7,7 +7,7 @@ db.row_factory = sqlite3.Row
 rows = db.execute("""
     SELECT stage, max_hop, bm25_weight, graph_weight, symbol_weight,
            hop_decay, reverse_import_weight,
-           max_files, max_tokens, query_window,
+           max_files, max_tokens,
            trim_prefix, trim_suffix,
            chrf_score, num_samples, timestamp
     FROM experiments
@@ -29,7 +29,6 @@ for r in rows:
     sym = f"{r['symbol_weight']:.2f}" if r["symbol_weight"] is not None else "?"
     decay = f"{r['hop_decay']:.1f}" if r["hop_decay"] is not None else "?"
     rev = f"{r['reverse_import_weight']:.1f}" if r["reverse_import_weight"] is not None else "?"
-    qw = str(r["query_window"]) if r["query_window"] is not None else "?"
 
     print(f"{r['stage']:<8} "
           f"{r['max_hop']:>3} "
@@ -40,7 +39,6 @@ for r in rows:
           f"{rev:>5} "
           f"{r['max_files']:>5} "
           f"{r['max_tokens']:>5} "
-          f"{qw:>4} "
           f"{trim:>4} "
           f"{chrf:>8} "
           f"{r['num_samples']:>5}  "
