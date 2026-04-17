@@ -1,0 +1,14 @@
+# @package _global_
+# Sweep over edge-type weights for the adaptive call-graph retriever
+# Tests: Which relation types (calls, inheritance, type refs, imports) contribute most?
+
+defaults:
+  - override /retrieval: adaptive_call_graph
+
+hydra:
+  sweeper:
+    params:
+      retrieval.graph.call_weight: 0.50,0.75,1.00
+      retrieval.graph.inheritance_weight: 0.25,0.55,0.80
+      retrieval.graph.type_ref_weight: 0.20,0.40,0.60
+      retrieval.graph.import_weight: 0.15,0.30,0.50

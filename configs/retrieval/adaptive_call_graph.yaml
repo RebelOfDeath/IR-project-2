@@ -1,0 +1,43 @@
+# Adaptive Call-Graph retrieval: BM25 + AST-based graph expansion + Symbol Matching
+# Uses Quam-style adaptive expansion over call/import/inheritance/type-reference relations
+name: adaptive_call_graph
+
+# Graph expansion settings
+graph:
+  max_hop: 2
+  hop_decay: 0.65
+  seed_temperature: 4.0
+
+  # Edge-type weights (for Quam-style affinity scoring)
+  import_weight: 0.30
+  reverse_import_weight: 0.12
+  call_weight: 1.00
+  reverse_call_weight: 0.75
+  inheritance_weight: 0.55
+  type_ref_weight: 0.40
+  sibling_weight: 0.10
+
+# Scoring weights
+scoring:
+  bm25_weight: 0.45
+  symbol_weight: 0.18
+  file_prior_weight: 0.12
+  graph_affinity_weight: 0.25
+  modified_bonus: 0.10
+  same_file_bonus: 0.06
+
+# Retrieval pool settings
+pool:
+  bm25_topk: 200
+  initial_pool_size: 80
+  frontier_pool_size: 120
+  batch_size: 6
+  top_seed_count: 8
+  max_selected_entities: 48
+  max_entities_per_file: 4
+
+# SlideGar listwise reranker hook (disabled by default)
+slidegar:
+  enabled: false
+  window_size: 20
+  step_size: 10

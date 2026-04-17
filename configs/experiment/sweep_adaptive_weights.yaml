@@ -1,0 +1,13 @@
+# @package _global_
+# Sweep over scoring weights for the adaptive call-graph retriever
+# Tests: How do BM25 vs graph-affinity vs symbol weights affect retrieval quality?
+
+defaults:
+  - override /retrieval: adaptive_call_graph
+
+hydra:
+  sweeper:
+    params:
+      retrieval.scoring.bm25_weight: 0.30,0.45,0.55,0.70
+      retrieval.scoring.graph_affinity_weight: 0.10,0.25,0.40
+      retrieval.scoring.symbol_weight: 0.10,0.18,0.30

@@ -1,0 +1,12 @@
+# @package _global_
+# Sweep over hop depth and decay for the adaptive call-graph retriever
+# Tests: What is the effect of graph expansion depth and decay rate?
+
+defaults:
+  - override /retrieval: adaptive_call_graph
+
+hydra:
+  sweeper:
+    params:
+      retrieval.graph.max_hop: 0,1,2,3
+      retrieval.graph.hop_decay: 0.50,0.65,0.80

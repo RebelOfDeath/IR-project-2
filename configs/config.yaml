@@ -17,6 +17,8 @@ context:
   max_tokens: 8000
   min_lines: 5
   query_window: 150
+  max_entity_lines: 80
+  snippet_padding_lines: 2
 
 # Prefix/suffix trimming (for baseline comparison)
 trim:
