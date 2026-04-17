@@ -1831,6 +1831,7 @@ def run_with_config(cfg: "DictConfig", original_cwd: str) -> Optional[Dict[str, 
     os.makedirs(predictions_dir, exist_ok=True)
 
     tasks_path = os.path.join(data_dir, f"{language}-{stage}.jsonl")
+    repos_dir = os.path.join(data_dir, f"repositories-{language}-{stage}")
     prediction_filename = _build_prediction_filename(cfg)
     predictions_path = os.path.join(predictions_dir, prediction_filename)
 
@@ -1838,7 +1839,7 @@ def run_with_config(cfg: "DictConfig", original_cwd: str) -> Optional[Dict[str, 
 
     eval_results = process_tasks(
         tasks_path=tasks_path,
-        repos_dir=data_dir,
+        repos_dir=repos_dir,
         predictions_path=predictions_path,
         stage=stage,
         language=language,
